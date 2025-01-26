@@ -5,6 +5,7 @@ const global = {
       type: '',
       page: 1, 
       totalPages: 1,
+      totalResuls: 0,
       api: {
         apiKey: 'b6d50363806e0d1ec5acdd47b562262c',
         apiUrl: 'https://api.themoviedb.org/3/'
@@ -232,7 +233,11 @@ async function search(){
   global.search.term = urlParams.get('search-term');
 
   if(global.search.term !== '' && global.search.term !== null){
-    const {results, total_pages, page }= await searchAPIData();
+    const {results, total_pages, page, total_results }= await searchAPIData();
+
+    global.search.page = page;
+    global.search.totalPages = total_pages;
+    global.search.totalResuls = total_results;
     
     if(results.length===0 ){
       showAlert('No results found');
@@ -248,6 +253,12 @@ async function search(){
 }
 
 function displaySearchResults(results){
+
+  //crear prev results
+  document.querySelector('#search-results').innerHTML = '';
+  document.querySelector('#search-results-heading').innerHTML = '';
+  document.querySelector('#pagination').innerHTML = '';
+
   results.forEach(result =>{
     const div = document.createElement('div');
     div.classList.add('card');
@@ -274,9 +285,47 @@ function displaySearchResults(results){
         </p>
       </div>
     `;
-
+    document.querySelector('#search-results-heading').innerHTML = 
+    `<h2>${results.length} of ${global.search.totalResuls} Results for ${global.search.term}</h2>`;
     document.querySelector('#search-results').appendChild(div);
+
+    
 })
+  displayPagination();
+}
+//create and display pagination for search
+function displayPagination(){
+  const div = document.createElement('div');
+  div.classList.add('pagination');
+  div.innerHTML = `
+    <button class="btn btn-primary" id="prev">Prev</button>
+    <button class="btn btn-primary" id="next">Next</button>
+    <div class="page-counter">Page ${global.search.page} of ${global.search.totalPages}</div>
+        `;
+
+    document.querySelector('#pagination').appendChild(div);
+
+    //disable prev button if on first page
+    if(global.search.page === 1){
+      document.querySelector('#prev').disabled = true;
+    }
+    if(global.search.page === global.search.totalPages){
+      document.querySelector('#next').disabled = true;
+    }
+
+    //Next Page
+    document.querySelector('#next').addEventListener('click', async ()=>{
+      global.search.page++;
+      const {results, total_pages} = await searchAPIData();
+      displaySearchResults(results);
+    })
+
+    //prev Page
+    document.querySelector('#prev').addEventListener('click', async ()=>{
+      global.search.page--;
+      const {results, total_pages} = await searchAPIData();
+      displaySearchResults(results);
+    })
 }
 
 //Display slider movies
@@ -347,7 +396,7 @@ async function searchAPIData(){
     const API_URL = 'https://api.themoviedb.org/3/';
 
   showSpinner();
-  const response = await fetch(`${API_URL}search/${global.search.type}?api_key=${API_KEY}&language=en-US&query=${global.search.term}`);
+  const response = await fetch(`${API_URL}search/${global.search.type}?api_key=${API_KEY}&language=en-US&query=${global.search.term}&page=${global.search.page}`);
 
   const data = await response.json();
 
